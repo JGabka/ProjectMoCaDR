@@ -44,36 +44,22 @@ def build_rating_matrix(train_file):
 
 def train_svd2_model(train_file, n_components=5, limit=10):
     Z, user_map, movie_map = build_rating_matrix(train_file)
-    n_users = len(user_map)
-    n_movies = len(movie_map)
-    svd = TruncatedSVD(n_components=n_components, random_state=42)
-    svd.fit(Z)
-    Sigma2 = np.diag(svd.singular_values_)
-    VT = svd.components_
+    Z_approx = Z.copy()
+    p = 0
 
-    W = svd.transform(Z) / svd.singular_values_
-    H = np.dot(Sigma2, VT)
-    Z_approx = np.dot(W, H)
-    for i in range(n_users):
-        for j in range(n_movies):
-            if Z[i, j] != 0:
-                Z_approx[i, j] = Z[i, j]
-    p=0
-    if p<limit:
+    while p < limit:
+        svd = TruncatedSVD(n_components=n_components, random_state=42)
         svd.fit(Z_approx)
+
         Sigma2 = np.diag(svd.singular_values_)
         VT = svd.components_
-        W = svd.transform(Z_approx) / svd.singular_values_
+        W = svd.transform(Z_approx) / (svd.singular_values_ + 1e-10)  # zabezpieczenie
         H = np.dot(Sigma2, VT)
-        Z_approx = np.dot(W, H)
-        for i in range(n_users):
-            for j in range(n_movies):
-                if Z[i,j]!=0:
-                    Z_approx[i,j]=Z[i,j]
+        Z_new = np.dot(W, H)
 
-        p+=1
+        Z_approx = np.where(Z != 0, Z, Z_new)
 
-
+        p += 1
 
     return {"Z_approx":Z_approx, "user_map":user_map, "movie_map":movie_map}
 
