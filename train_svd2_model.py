@@ -103,4 +103,4 @@ def predict(test_file, model_data):
     return predictions
 
 prediction=predict("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/sample_test.csv",model)
-print(prediction)
+
