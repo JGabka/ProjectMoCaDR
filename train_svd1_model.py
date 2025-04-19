@@ -15,4 +15,5 @@ def train_svd1_model(train_file, n_components=5):
     H = np.dot(Sigma2, VT)
     Z_approx = np.dot(W, H)
 
+
     return {"Z_approx":Z_approx, "user_map":user_map, "movie_map":movie_map}
