@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 np.random.seed(42)
-from build_rating_matrix import build_rating_matrix
+
 
 
 def build_rating_matrix(train_file):
@@ -69,14 +69,13 @@ def train_sgd_model(train_file, lr=0.02, n_epochs=20):
             loss_list.append(loss.item())
 
         print("Distance using SGD with r=",r,loss)
-    return loss_list
+
 
 
 loss_list = train_sgd_model("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/sample_project1-2/tools/ratings.csv")
 
 
-plt.plot(loss_list,'r')
-plt.show()
+
 
 
 matrix,user, movie = build_rating_matrix("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/sample_project1-2/tools/ratings.csv")
