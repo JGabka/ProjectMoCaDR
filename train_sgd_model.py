@@ -4,12 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 np.random.seed(42)
 
-
-
-def build_rating_matrix(train_file):
+def build_rating_matrix(train_file, fillna_method='zero'):
     """
     Reads a ratings CSV file with columns: userId, movieId, rating.
-    Builds and returns the user–movie matrix Z (missing entries set to 0),
+    Builds and returns the user–movie matrix Z (missing entries set to 0 or mean),
     along with mappings from userId to row index and movieId to column index.
 
     Parameters:
@@ -22,38 +20,88 @@ def build_rating_matrix(train_file):
     """
     df = pd.read_csv(train_file)
 
-    # Extract unique users and movies
     unique_users = df["userId"].unique()
     unique_movies = df["movieId"].unique()
 
-    # Create mappings: userId -> row index, movieId -> column index
     user_map = {uid: i for i, uid in enumerate(sorted(unique_users))}
     movie_map = {mid: j for j, mid in enumerate(sorted(unique_movies))}
 
     n_users = len(user_map)
     n_movies = len(movie_map)
 
-    # Build matrix Z with zeros for missing ratings
-    Z = np.zeros((n_users, n_movies), dtype=np.float32)
+    Z = np.full((n_users, n_movies), np.nan, dtype=np.float32)
+
     for row in df.itertuples():
-        u = row.userId
-        m = row.movieId
-        rating = row.rating
-        i = user_map[u]
-        j = movie_map[m]
-        Z[i, j] = rating
+        i = user_map[row.userId]
+        j = movie_map[row.movieId]
+        Z[i, j] = row.rating
+
+    if fillna_method == 'movie':
+        movie_means = np.nanmean(Z, axis=0)
+        inds = np.where(np.isnan(Z))
+        Z[inds] = np.take(movie_means, inds[1])
+
+    elif fillna_method == 'user':
+        user_means = np.nanmean(Z, axis=1)
+        inds = np.where(np.isnan(Z))
+        Z[inds] = np.take(user_means, inds[0])
+
+    elif fillna_method == 'zero':
+        Z = np.nan_to_num(Z, nan=0.0)
+
+    else:
+        raise ValueError("fillna_method must be one of: 'zero', 'movie', 'user'")
 
     return Z, user_map, movie_map
+
+# def build_rating_matrix(train_file):
+#     """
+#     Reads a ratings CSV file with columns: userId, movieId, rating.
+#     Builds and returns the user–movie matrix Z (missing entries set to 0),
+#     along with mappings from userId to row index and movieId to column index.
+#
+#     Parameters:
+#       - train_file (str): Path to the training CSV file.
+#
+#     Returns:
+#       - Z (ndarray): Rating matrix of shape (n_users, n_movies).
+#       - user_map (dict): Mapping from userId to row index.
+#       - movie_map (dict): Mapping from movieId to column index.
+#     """
+#     df = pd.read_csv(train_file)
+#
+#     # Extract unique users and movies
+#     unique_users = df["userId"].unique()
+#     unique_movies = df["movieId"].unique()
+#
+#     # Create mappings: userId -> row index, movieId -> column index
+#     user_map = {uid: i for i, uid in enumerate(sorted(unique_users))}
+#     movie_map = {mid: j for j, mid in enumerate(sorted(unique_movies))}
+#
+#     n_users = len(user_map)
+#     n_movies = len(movie_map)
+#
+#     # Build matrix Z with zeros for missing ratings
+#     Z = np.zeros((n_users, n_movies), dtype=np.float32)
+#     for row in df.itertuples():
+#         u = row.userId
+#         m = row.movieId
+#         rating = row.rating
+#         i = user_map[u]
+#         j = movie_map[m]
+#         Z[i, j] = rating
+#
+#     return Z, user_map, movie_map
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
 
-def train_sgd_model(train_file, lr=0.02, n_epochs=20):
+def train_sgd_model(train_file, lr=0.02, n_epochs=100):
 
-    Z, user_map, movie_map = build_rating_matrix(train_file)
+    Z, user_map, movie_map = build_rating_matrix(train_file,'zero')
     n,d = Z.shape[0], Z.shape[1]
     Z = torch.from_numpy(Z)
-    for r in range(20):
+    for r in range(1,20):
         W = torch.randn((n,r), requires_grad=True, dtype=torch.float, device=device)
         H = torch.randn((r,d), requires_grad=True, dtype=torch.float, device=device)
         optimizer = torch.optim.SGD([W, H], lr=lr)
@@ -69,14 +117,18 @@ def train_sgd_model(train_file, lr=0.02, n_epochs=20):
             loss_list.append(loss.item())
 
         print("Distance using SGD with r=",r,loss)
+        # plt.figure(figsize=(12, 4))
+        # plt.plot(loss_list, 'r')
+        # plt.grid('True', color='y')
+        # plt.show()
 
 
 
-loss_list = train_sgd_model("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/sample_project1-2/tools/ratings.csv")
+loss_list = train_sgd_model("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/test1.csv")
 
 
 
 
 
-matrix,user, movie = build_rating_matrix("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/sample_project1-2/tools/ratings.csv")
+matrix,user, movie = build_rating_matrix("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/test1.csv")
 print(matrix.shape)
