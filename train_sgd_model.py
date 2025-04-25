@@ -123,7 +123,7 @@ def train_sgd_model(train_file, lr=0.02, n_epochs=20):
         loss_list = []
 
         for epoch in range(n_epochs):
-            epoch_loss_list = []
+
             pred = torch.matmul(W, H)
             rows = torch.tensor([i[0] for i in train_set], device=device)
             cols = torch.tensor([i[1] for i in train_set], device=device)
