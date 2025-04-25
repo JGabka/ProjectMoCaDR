@@ -113,16 +113,17 @@ def train_sgd_model(train_file, lr=0.02, n_epochs=20):
     Z, user_map, movie_map = build_rating_matrix(train_file,'zero')
     n,d = Z.shape[0], Z.shape[1]
     I=set(zip(*np.nonzero(Z)))
-    train_set, test_set = split_indices(I)
+    train_set, test_set = split_indices(I,seed=4)
     Z = torch.from_numpy(Z)
 
-    for r in range(1,20):
+    for r in range(5,6):
         W = torch.randn((n,r), requires_grad=True, dtype=torch.float, device=device)
         H = torch.randn((r,d), requires_grad=True, dtype=torch.float, device=device)
-        optimizer = torch.optim.SGD([W, H], lr=lr)
+        optimizer = torch.optim.Adam([W, H], lr=lr)
         loss_list = []
 
         for epoch in range(n_epochs):
+            lr=lr/(1 + 0.01 * epoch)
 
             pred = torch.matmul(W, H)
             rows = torch.tensor([i[0] for i in train_set], device=device)
@@ -140,14 +141,19 @@ def train_sgd_model(train_file, lr=0.02, n_epochs=20):
         # plt.plot(loss_list, 'r')
         # plt.grid('True', color='y')
         # plt.show()
+    return torch.matmul(W,H)
 
 
 
-loss_list = train_sgd_model("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/ratings.csv")
+Z_approx = train_sgd_model("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/ratings.csv")
 
+Z, user_map, movie_map = build_rating_matrix("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/ratings.csv",'zero')
 
-
-
-
-matrix,user, movie = build_rating_matrix("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/test1.csv")
-print(matrix.shape)
+I=set(zip(*np.nonzero(Z)))
+train_set, test_set = split_indices(I, seed=4)
+rows = torch.tensor([i[0] for i in test_set], device=device)
+cols = torch.tensor([i[1] for i in test_set], device=device)
+Z = torch.from_numpy(Z)
+loss = torch.mean((Z[rows, cols] - Z_approx[rows, cols]) ** 2)
+RMSE=loss**(1/2)
+print(RMSE)
