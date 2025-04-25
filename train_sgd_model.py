@@ -1,6 +1,7 @@
 import torch
 import pandas as pd
 import numpy as np
+import random
 import matplotlib.pyplot as plt
 np.random.seed(42)
 
@@ -95,12 +96,26 @@ def build_rating_matrix(train_file, fillna_method='zero'):
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 
+def split_indices(indices, train_ratio=0.8, seed=None):
+    indices_list = list(indices)
+    if seed is not None:
+        random.seed(seed)
+    random.shuffle(indices_list)
 
-def train_sgd_model(train_file, lr=0.02, n_epochs=100):
+    split_point = int(len(indices_list) * train_ratio)
+    train_set = set(indices_list[:split_point])
+    test_set = set(indices_list[split_point:])
+
+    return train_set, test_set
+
+def train_sgd_model(train_file, lr=0.02, n_epochs=20):
 
     Z, user_map, movie_map = build_rating_matrix(train_file,'zero')
     n,d = Z.shape[0], Z.shape[1]
+    I=set(zip(*np.nonzero(Z)))
+    train_set, test_set = split_indices(I)
     Z = torch.from_numpy(Z)
+
     for r in range(1,20):
         W = torch.randn((n,r), requires_grad=True, dtype=torch.float, device=device)
         H = torch.randn((r,d), requires_grad=True, dtype=torch.float, device=device)
@@ -108,8 +123,14 @@ def train_sgd_model(train_file, lr=0.02, n_epochs=100):
         loss_list = []
 
         for epoch in range(n_epochs):
+            epoch_loss_list=[]
+            pred = torch.matmul(W, H)
 
-            loss=torch.mean(torch.pow(Z-torch.matmul(W,H),2))
+            for i in train_set:
+                diff = Z[i[0], i[1]] - pred[i[0], i[1]]
+                epoch_loss_list.append(diff ** 2)
+
+            loss= torch.mean(torch.stack(epoch_loss_list))
             loss.backward()
 
             optimizer.step()
@@ -124,7 +145,7 @@ def train_sgd_model(train_file, lr=0.02, n_epochs=100):
 
 
 
-loss_list = train_sgd_model("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/test1.csv")
+loss_list = train_sgd_model("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/ratings.csv")
 
 
 
