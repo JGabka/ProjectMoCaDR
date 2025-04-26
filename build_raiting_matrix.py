@@ -45,24 +45,36 @@ def build_rating_matrix(train_file, fillna_method='zero'):
 
     elif fillna_method == 'zero':
         Z = np.nan_to_num(Z, nan=0.0)
+
     elif fillna_method == 'weighted':
-        # Obliczamy średnie dla użytkowników i filmów
         user_means = np.nanmean(Z, axis=1)
         movie_means = np.nanmean(Z, axis=0)
 
+        user_counts = np.sum(~np.isnan(Z), axis=1)  # liczba ocen u użytkownika
+        movie_counts = np.sum(~np.isnan(Z), axis=0)  # liczba ocen filmu
+
         inds = np.where(np.isnan(Z))
         for i, j in zip(inds[0], inds[1]):
-            # Średnia ważona: np. 0.5 * user_mean + 0.5 * movie_mean
             user_mean = user_means[i]
             movie_mean = movie_means[j]
+            user_count = user_counts[i]
+            movie_count = movie_counts[j]
+
             if np.isnan(user_mean) and np.isnan(movie_mean):
-                Z[i, j] = 0.0  # fallback gdy oba są nan
+                Z[i, j] = 0.0
             elif np.isnan(user_mean):
                 Z[i, j] = movie_mean
             elif np.isnan(movie_mean):
                 Z[i, j] = user_mean
             else:
-                Z[i, j] = 0.5 * user_mean + 0.5 * movie_mean
+                # Wagi proporcjonalne do liczby ocen
+                total = user_count + movie_count
+                if total == 0:
+                    Z[i, j] = 0.5 * user_mean + 0.5 * movie_mean  # fallback
+                else:
+                    user_weight = user_count / total
+                    movie_weight = movie_count / total
+                    Z[i, j] = user_weight * user_mean + movie_weight * movie_mean
 
     else:
         raise ValueError("fillna_method must be one of: 'zero', 'movie', 'user'")
