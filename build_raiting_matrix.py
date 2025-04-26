@@ -45,6 +45,24 @@ def build_rating_matrix(train_file, fillna_method='zero'):
 
     elif fillna_method == 'zero':
         Z = np.nan_to_num(Z, nan=0.0)
+    elif fillna_method == 'weighted':
+        # Obliczamy średnie dla użytkowników i filmów
+        user_means = np.nanmean(Z, axis=1)
+        movie_means = np.nanmean(Z, axis=0)
+
+        inds = np.where(np.isnan(Z))
+        for i, j in zip(inds[0], inds[1]):
+            # Średnia ważona: np. 0.5 * user_mean + 0.5 * movie_mean
+            user_mean = user_means[i]
+            movie_mean = movie_means[j]
+            if np.isnan(user_mean) and np.isnan(movie_mean):
+                Z[i, j] = 0.0  # fallback gdy oba są nan
+            elif np.isnan(user_mean):
+                Z[i, j] = movie_mean
+            elif np.isnan(movie_mean):
+                Z[i, j] = user_mean
+            else:
+                Z[i, j] = 0.5 * user_mean + 0.5 * movie_mean
 
     else:
         raise ValueError("fillna_method must be one of: 'zero', 'movie', 'user'")
