@@ -1,0 +1,175 @@
+\documentclass[a4paper,12pt]{report}
+\usepackage[polish,english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amssymb}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage[margin = 2 cm]{geometry}
+\usepackage{booktabs}
+\usepackage[table]{xcolor}
+\usepackage{cancel}
+\usepackage{float}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage[utf8]{inputenc}
+\usepackage{xcolor}
+\theoremstyle{definition}
+\newtheorem{definition}{Definicja}[chapter]
+\newtheorem{example}{Przykład}[chapter]
+\newtheorem{lemma}{Lemat}[chapter]
+\newtheorem{theorem}{Twierdzenie}[chapter]
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\lstset{
+    language=R,
+    basicstyle=\ttfamily\small,
+    inputencoding=utf8,
+    extendedchars=true,
+    literate={
+        ą}{{\k{a}}}1 
+        {ć}{{\'c}}1 
+        {ę}{{\k{e}}}1 
+        {ł}{{\l{}}}1 
+        {ń}{{\'n}}1 
+        {ó}{{\'o}}1 
+        {ś}{{\'s}}1 
+        {ź}{{\'z}}1 
+        {ż}{{\.z}}1,
+    numbers=left,
+    numberstyle=\tiny\color{codegray},
+    stepnumber=1,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    breaklines=true,
+    breakatwhitespace=true,
+    frame=single,
+    captionpos=b,
+    escapeinside={\%*}{*)},
+    keywordstyle=\color{codepurple},
+    commentstyle=\color{codegreen},
+    stringstyle=\color{blue},
+    backgroundcolor=\color{backcolour},
+}
+\title{Movie Rating Prediction}
+\author{Julia Gąbka and Dawid Kawalec}
+\date{April 2025}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\pagebreak
+
+\section*{Introduction}
+
+In a report we will consider implementation of a recommendation system for movie ratings. We will use various algorithms to achieve such result. We will train four models -- Non-Negative Matrix Factorization (NMF), Trancated Singular Value Decomposition (SVD1), SVD2, and Stochastic Gradient Descent (SGD) -- using the data from \textit{ratings.csv}. Our models will be capable of training on this type of dataset, but it will also be tested on unseen data. Our predictions will be rounded to nearest $0.5$ increment.
+
+\section{Data}
+
+\noindent The report will be based on file \textit{ratings.csv} which consist approximately $100\ 000$ ratings -- about $600$ users have rated around $9\ 000$ movies.  
+
+\begin{table}[htbp]
+  \centering
+  \caption{Dataset \textit{ratings.csv}}
+  \label{tab:ratings}
+  \begin{tabular}{|c|c|c|c|}
+    \hline
+     userId &  movieId &  rating &    timestamp \\
+    \hline
+          1 &        1 &     4.0 &   964982703 \\
+          1 &        3 &     4.0 &   964981247 \\
+          1 &        6 &     4.0 &   964982224 \\
+          1 &       47 &     5.0 &   964983815 \\
+          1 &       50 &     5.0 &   964982931 \\
+    \vdots  &\vdots    & \vdots  &   \vdots    \\
+    \hline
+  \end{tabular}
+\end{table}
+
+
+\noindent Here, userId is a unique user identifier, movieId is a unique movie identifier, and rating is an integer rating from $0$ to $5$ (although rating may also include half points e.g., $3.5$, $4.5$). The  timestamp field will not be used.
+
+\noindent We will convert the data into matrices. Let $\mathbf{Z}$ be a matrix containing the training ratings -- a matrix of size $n\times d$, where $n$ is the number of users and $d$ is the number of movies. Thus, the sample fragment of \textit{ratings.csv} (after applying an appropriate userID-to-integer mapping) will be converted to
+$$\mathbf{Z}[0,0] = 4.0,\ \mathbf{Z}[0,2] = 5.0,\ \mathbf{Z}[0,5] = 4.0,\ \mathbf{Z}[0,46] = 5.0,\ \mathbf{Z}[0,49] = 5.0,\ \dots$$
+We have to notice that $\mathbf{Z}$ is sparse -- many entries of $\mathbf{Z}$ are undefined.
+
+\subsection{Problem of missing values}
+
+We are considering following ideas of filling blank spaces:
+
+\begin{enumerate}
+    
+
+\item  replace with zeros,
+
+\item replace with mean of ratings for this user (mean by row),
+
+\item  replace with mean of ratings for this movie (mean by column),
+
+\item  replace with weighted mean of ratings by each user and movie.
+
+\end{enumerate}
+
+\noindent We assume that the first method will not be a good prediction, second and third may be closer, but we expect the fourth one to have the best results.
+\newline
+\newline
+\noindent \textbf{How we weight ratings?}
+\newline
+\newline
+\noindent When filling missing entries in the user–movie rating matrix with the weighted method, the missing value for each (user, movie) pair is estimated using a weighted average of the user's mean rating and the movie's mean rating.\newline
+
+\noindent The weights are determined automatically based on the number of ratings each user and each movie has provided/received:\newline
+\newline 
+ \noindent A user who has rated many movies is considered more "reliable" in terms of their average rating. Similarly, a movie that has been rated by many users has a more "trustworthy" average score.
+
+
+
+\section{Theory}
+
+In this section we will consider 4  algorithms: NMF, SVD, SVD2, SGD and way to compare them. We are spliting our data set into 2 groups: 90\% of them will be used as a training set for each method and rest will be a test set $\mathcal{T}$.
+
+\subsection{Evaluation}
+
+To check our models' performance on test data we will compute root-mean square error
+$$\text{RMSE} = \sqrt{\frac{1}{|\mathcal{T}|} \sum_{(u,m)\in \mathcal{T}}(\mathbf{Z}'[u,m]-\mathbf{T}[u,m])^2},$$
+
+\noindent where $\mathcal{T}$ is a test set, $\mathbf{Z}'[u,m]$ is a rate prediction for user $u$ and movie $m$, and $\mathbf{T}[u,m]$ is the "true" rating.
+
+\subsection{Non-Negative Matrix Factorization}
+
+Non-negative matrix factorization aims at approximating $n\times d$ non negative matrix $\mathbf{Z}$ as a product of two matrices, say $\mathbf{W}$ (of size $n\times r$) and $\mathbf{H}$ (of size $r\times d$), however with a restriction that $\mathbf{W}$ and $\mathbf{H}$ are non-negative matrices. There are no other restictions on the matrices (coulmns do not need to be orthonormal etc.). Actually, NMF is a set of algorithms, one od the parameters is a distance $dist$ function between matrices, NMF's goal is to minimize the distance between $\mathbf{Z}$ and $\mathbf{WH}$, roughtly speaking, it tries to solve the following problem\newline
+\newline
+\noindent given $\mathbf{Z}$ of size $n\times d$ and $r\leq d$ find
+$$\argmin_{\mathbf{W}, \mathbf{Z}}\{ \text{dist}(\mathbf{Z}, \mathbf{WH})\}$$
+\subsection{Truncated Singular Value Decomposition (SVD1)}
+
+
+This method follows the same approach as NMF, but instead of NMF, Singular Value Decomposition (SVD) is used.  
+SVD approximates \textbf{Z} as
+\[
+\mathbf{Z} \approx \mathbf{U}_r \mathbf{\Lambda}_r \mathbf{V}_r^{T},
+\]
+where $\mathbf{U}_r$, $\mathbf{\Lambda}_r$, and $\mathbf{V}_r^{T}$ are obtained from the truncated SVD decomposition. To maintain consistency with NMF, we set $\mathbf{W} = \mathbf{U}_r$ and $\mathbf{H} = \mathbf{\Lambda}_r \mathbf{V}_r^{T}$.
+
+\subsection{Singular Value Decomposition (SVD2)}
+
+This method follows a different approach for computing the SVD approximation. We consider \textbf{Z} and perform SVD as described above. Then we restore previous non-zero values to approximation of matrix \textbf{Z}. After that we perform the procedure again and again, until the number of iterations hit the limit, which we set before the experiment. 
+
+\subsection{Stochastic Gradient Descent (SGD)}
+
+In the previous methods, missing values in the matrix \textbf{Z} had to be imputed before applying factorization. Here, we reformulate the problem so that missing values are handled directly in the optimization process.  
+For a given \textbf{Z} of size $n \times d$, we seek matrices \textbf{W} (size $n \times r$) and \textbf{H} (size $r \times d$) by solving:
+\[
+\arg \min_{\mathbf{W}, \mathbf{H}} \sum_{(i,j): z_{ij} \neq '?'} (z_{ij} - \mathbf{w}_i^T \mathbf{h}_j)^2
+\]
+It is possible to use the Stochastic Gradient Descent (SGD) or Adam optimizer to find the best matrices \textbf{W} and \textbf{H}.
+
+\end{document}
