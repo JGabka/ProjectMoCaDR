@@ -26,7 +26,7 @@ def predict(test_file, model_data):
             rating = Z_approx[i, j]
         else:
             # If user or movie not seen in training, default to 0 (or any strategy)
-            rating = 0
+            rating = np.mean(Z_approx)
         # Round rating to nearest 0.5 increment
         rating_rounded = round(rating * 2) / 2
 
