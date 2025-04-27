@@ -77,6 +77,6 @@ def build_rating_matrix(train_file, fillna_method='zero'):
                     Z[i, j] = user_weight * user_mean + movie_weight * movie_mean
 
     else:
-        raise ValueError("fillna_method must be one of: 'zero', 'movie', 'user'")
+        raise ValueError("fillna_method must be one of: 'zero', 'movie', 'user','weighted'")
 
     return Z, user_map, movie_map
