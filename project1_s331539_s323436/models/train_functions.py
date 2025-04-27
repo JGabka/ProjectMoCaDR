@@ -22,17 +22,26 @@ def train_svd1_model(train_file, n_components=5):
     return {'Z_approx': W.dot(H), 'user_map': umap, 'movie_map': mmap}
 
 
-def train_svd2_model(train_file, n_components=5, limit=10):
-    Z, umap, mmap = build_rating_matrix(train_file)
+def train_svd2_model(train_file, n_components, limit=20):
+    Z_true, user_map, movie_map = build_rating_matrix(train_file,'zero')
+    Z, user_map, movie_map = build_rating_matrix(train_file,'weighted')
     Z_approx = Z.copy()
-    for _ in range(limit):
-        svd = TruncatedSVD(n_components=n_components, random_state=42)
+    svd = TruncatedSVD(n_components=n_components, random_state=42)
+    p = 0
+
+    while p < limit:
         svd.fit(Z_approx)
-        Sigma = np.diag(svd.singular_values_)
-        W = svd.transform(Z_approx) / (svd.singular_values_ + 1e-10)
-        H = Sigma.dot(svd.components_)
-        Z_approx = np.where(Z!=0, Z, W.dot(H))
-    return {'Z_approx': Z_approx, 'user_map': umap, 'movie_map': mmap}
+        Sigma2 = np.diag(svd.singular_values_)
+        VT = svd.components_
+        W = svd.transform(Z_approx) / (svd.singular_values_)
+        H = np.dot(Sigma2, VT)
+        Z_new = np.dot(W, H)
+
+        Z_approx = np.where(Z_true != 0, Z_true, Z_new)
+
+        p += 1
+
+    return {"Z_approx":Z_approx, "user_map":user_map, "movie_map":movie_map}
 
 
 def train_sgd_model(train_file, r=5, lr=0.02, n_epochs=100, device='cpu'):
