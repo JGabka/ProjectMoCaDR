@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 
 def predict(test_file, model_data):
@@ -10,16 +11,28 @@ def predict(test_file, model_data):
     Returns a list of dicts with keys: 'userId', 'movieId', 'rating'.
     """
     df = pd.read_csv(test_file)
-    z_approx = model_data['Z_approx']
-    umap, mmap = model_data['user_map'], model_data['movie_map']
-    predictions = []
-    for u, m in df[['userId', 'movieId']].itertuples(index=False):
-        if u in umap and m in mmap:
-            r = z_approx[umap[u], mmap[m]]
-        else:
-            r = 0
 
-        predictions.append({'userId': u,
-                            'movieId': m,
-                            'rating': round(r*2)/2})
+    Z_approx = model_data["Z_approx"]
+    user_map = model_data["user_map"]
+    movie_map = model_data["movie_map"]
+
+    predictions = []
+    for row in df.itertuples():
+        u = row.userId
+        m = row.movieId
+        if u in user_map and m in movie_map:
+            i = user_map[u]
+            j = movie_map[m]
+            rating = Z_approx[i, j]
+        else:
+            # If user or movie not seen in training, default to 0 (or any strategy)
+            rating = np.mean(Z_approx)
+        # Round rating to nearest 0.5 increment
+        rating_rounded = round(rating * 2) / 2
+
+        predictions.append({
+            "userId": u,
+            "movieId": m,
+            "rating": rating_rounded
+        })
     return predictions
