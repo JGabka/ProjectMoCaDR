@@ -1,11 +1,15 @@
 Ogolny opis jak dziala plik z wywolywaniem z terminalu.
 
-Wydaje mi sie ze trzeba najpierw pobrac wszystko jak jest a potem wlaczyc terminal na komputerze (na windows szukamy 'cmd'). Potem musimy uzyc komend zeby wywolac dzialanie naszych funckji (one da dla windowsa, ale pewnie jakies analogiczne beda dla mac'a)
+Wydaje mi sie ze trzeba najpierw pobrac wszystko jak jest a potem wlaczyc terminal na komputerze (na windows szukamy 'cmd'). Potem za pomoca cd sprawdzamy w jakim pliku jestesmy i jesli nie jestesmy w naszym z projektem to musimy zrobic 
+cd sciezka\do\projektu
+Potem musimy uzyc komend zeby wywolac dzialanie naszych funckji (one da dla windowsa, ale pewnie jakies analogiczne beda dla mac'a)
 
-python main.py --train_file data/ratings_train.csv --test_file data/ratings_test.csv --alg NMF  --model_path models_trained/NMF_model.pkl  --output_file results/NMF_preds.csv
-python main.py --train_file data/ratings_train.csv --test_file data/ratings_test.csv --alg SVD1 --model_path models_trained/SVD1_model.pkl --output_file results/SVD1_preds.csv
-python main.py --train_file data/ratings_train.csv --test_file data/ratings_test.csv --alg SVD2 --model_path models_trained/SVD2_model.pkl --output_file results/SVD2_preds.csv
-python main.py --train_file data/ratings_train.csv --test_file data/ratings_test.csv --alg SGD  --model_path models_trained/SGD_model.pkl  --output_file results/SGD_preds.csv
+python main.py --train_file data/ratings_train.csv --test_file  data/ratings_test.csv --alg SVD2 --model_path models_trained/svd2_model.pkl --output_file predictions/svd2_preds.csv
+
+python main.py --train_file data/ratings_train.csv --test_file  data/ratings_test.csv --alg SVD1 --model_path models_trained/svd1_model.pkl --output_file predictions/svd1_preds.csv
 
 
-Dodalem tez opcje zeby robilo te testy dla wszystkich ale testowalem tylko pojedyncze
+python main.py --train_file data/ratings_train.csv --test_file  data/ratings_test.csv --alg NMF --model_path models_trained/nmf_model.pkl --output_file predictions/nmf_preds.csv
+
+
+python main.py --train_file data/ratings_train.csv --test_file  data/ratings_test.csv --alg SGD --model_path models_trained/sgd_model.pkl --output_file predictions/sgd_preds.csv
