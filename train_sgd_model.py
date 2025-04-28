@@ -108,41 +108,40 @@ def split_indices(indices, train_ratio=0.8, seed=None):
 
     return train_set, test_set
 
-def train_sgd_model(train_file, lr=0.02, n_epochs=20):
+def train_sgd_model(train_file, lr=0.02, n_epochs=40,n_components=5,lamb=0):
 
     Z, user_map, movie_map = build_rating_matrix(train_file,'zero')
     n,d = Z.shape[0], Z.shape[1]
     I=set(zip(*np.nonzero(Z)))
-    train_set, test_set = split_indices(I,seed=4)
+    train_set, test_set = split_indices(I,seed=5)
     Z = torch.from_numpy(Z)
 
-    for r in range(5,6):
-        W = torch.randn((n,r), requires_grad=True, dtype=torch.float, device=device)
-        H = torch.randn((r,d), requires_grad=True, dtype=torch.float, device=device)
-        optimizer = torch.optim.Adam([W, H], lr=lr)
-        loss_list = []
+    W = torch.randn((n,n_components), requires_grad=True, dtype=torch.float, device=device)
+    H = torch.randn((n_components,d), requires_grad=True, dtype=torch.float, device=device)
+    optimizer = torch.optim.Adam([W, H], lr=lr)
+    loss_list = []
 
-        for epoch in range(n_epochs):
-            lr=lr/(1 + 0.01 * epoch)
+    for epoch in range(n_epochs):
+        lr=lr/(1 + 0.01 * epoch)
 
-            pred = torch.matmul(W, H)
-            rows = torch.tensor([i[0] for i in train_set], device=device)
-            cols = torch.tensor([i[1] for i in train_set], device=device)
+        pred = torch.matmul(W, H)
+        rows = torch.tensor([i[0] for i in train_set], device=device)
+        cols = torch.tensor([i[1] for i in train_set], device=device)
 
-            loss = torch.mean((Z[rows, cols] - pred[rows, cols]) ** 2)
-            loss.backward()
+        loss = torch.mean((Z[rows, cols] - pred[rows, cols]) ** 2)+lamb*(torch.sum(W[rows, :]**2)+torch.sum(H[:, cols]**2))
+        loss.backward()
 
-            optimizer.step()
-            optimizer.zero_grad()
-            loss_list.append(loss.item())
+        optimizer.step()
+        optimizer.zero_grad()
+        loss_list.append(loss.item())
 
-        print("Distance using SGD with r=",r,loss)
+    #print("Distance using SGD with r=",n_components,loss)
+
         # plt.figure(figsize=(12, 4))
         # plt.plot(loss_list, 'r')
         # plt.grid('True', color='y')
         # plt.show()
     return torch.matmul(W,H)
-
 
 
 Z_approx = train_sgd_model("/Users/juliagabka/Desktop/studia/magisterka /1 rok/2 semestr/mocadr/ProjectMoCaDR/ratings.csv")
